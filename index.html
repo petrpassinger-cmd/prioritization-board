@@ -648,10 +648,17 @@ function filterTheme(id) {
   save(); render();
 }
 
+function fundamensTheme() {
+  return state.themes.find(t => t.name.toLowerCase() === 'fundaments');
+}
+
 function visibleFeatures() {
-  return activeTheme === 'all'
-    ? state.features
-    : state.features.filter(f => f.themeId === activeTheme);
+  if (activeTheme === 'all') return state.features;
+  if (activeTheme === 'excl-fundaments') {
+    const ft = fundamensTheme();
+    return ft ? state.features.filter(f => f.themeId !== ft.id) : state.features;
+  }
+  return state.features.filter(f => f.themeId === activeTheme);
 }
 
 // ── Themes bar ─────────────────────────────────────────────────────────────
@@ -672,6 +679,22 @@ function renderThemesBar() {
     chip.onclick = () => filterTheme(t.id);
     bar.insertBefore(chip, manageBtn);
   });
+
+  // "Excluding Fundaments" chip — only shown when a Fundaments theme exists
+  let exclChip = bar.querySelector('.chip-excl-fundaments');
+  if (fundamensTheme()) {
+    if (!exclChip) {
+      exclChip = document.createElement('div');
+      exclChip.className = 'theme-chip chip-excl-fundaments';
+      exclChip.dataset.theme = 'excl-fundaments';
+      exclChip.textContent = 'Excl. Fundaments';
+      exclChip.onclick = () => filterTheme('excl-fundaments');
+      bar.insertBefore(exclChip, manageBtn);
+    }
+    exclChip.className = 'theme-chip chip-excl-fundaments' + (activeTheme === 'excl-fundaments' ? ' active' : '');
+  } else if (exclChip) {
+    exclChip.remove();
+  }
 
   const allChip = bar.querySelector('.theme-chip.all');
   allChip.className = 'theme-chip all' + (activeTheme === 'all' ? ' active' : '');
@@ -823,7 +846,8 @@ function renderTable() {
 
   // section title
   const t = themeById(activeTheme);
-  document.getElementById('sectionTitle').textContent = t ? t.name + ' Features' : 'All Features';
+  const sectionLabel = activeTheme === 'excl-fundaments' ? 'All Features excl. Fundaments' : t ? t.name + ' Features' : 'All Features';
+  document.getElementById('sectionTitle').textContent = sectionLabel;
 }
 
 // ── Mutations ──────────────────────────────────────────────────────────────
