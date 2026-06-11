@@ -468,7 +468,6 @@
       <thead>
         <tr>
           <th onclick="sortBy('name')">Feature Name <span class="sort-icon">↕</span></th>
-          <th>Theme</th>
           <th onclick="sortBy('nba')">New Business Acquisition <span class="sort-icon">↕</span></th>
           <th onclick="sortBy('cd')">Channel Diversification <span class="sort-icon">↕</span></th>
           <th onclick="sortBy('effort')">Effort <span class="sort-icon">↕</span></th>
@@ -495,6 +494,10 @@
   </div>
   <div class="drawer-body">
     <div class="drawer-scores" id="drawerScores"></div>
+    <div class="drawer-label">Theme</div>
+    <select class="effort-select" id="drawerTheme" style="width:100%;margin-bottom:16px">
+      <option value="">— none —</option>
+    </select>
     <div class="drawer-label">Description</div>
     <textarea class="drawer-desc" id="drawerDesc" placeholder="Add a longer description, context, links…"></textarea>
   </div>
@@ -697,7 +700,7 @@ function renderTable() {
   const mx = maxVpE();
 
   if (features.length === 0 && !addingRow) {
-    tbody.innerHTML = '<tr><td colspan="8"><div class="empty">No features yet — click "+ Add Feature" to start.</div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7"><div class="empty">No features yet — click "+ Add Feature" to start.</div></td></tr>';
   }
 
   features.forEach(f => {
@@ -712,12 +715,6 @@ function renderTable() {
       <td class="td-name">
         <button class="feat-name-btn" onclick="openDrawer('${f.id}')">${esc(f.name)}${f.description ? ' <span style="color:var(--accent);font-size:11px" title="Has description">●</span>' : ''}</button>
         ${theme ? `<div class="td-theme" style="background:${theme.color}22;color:${theme.color}">${esc(theme.name)}</div>` : ''}
-      </td>
-      <td>
-        <select class="effort-select" onchange="changeTheme('${f.id}', this.value)">
-          ${state.themes.map(t => `<option value="${t.id}" ${t.id===f.themeId?'selected':''}>${esc(t.name)}</option>`).join('')}
-          <option value="" ${!f.themeId?'selected':''}>— none —</option>
-        </select>
       </td>
       <td>${pipRow(f.id, 'nba', f.nba)}</td>
       <td>${pipRow(f.id, 'cd', f.cd)}</td>
@@ -970,6 +967,10 @@ function openDrawer(id) {
     </div>
   `;
 
+  const themeSelect = document.getElementById('drawerTheme');
+  themeSelect.innerHTML = '<option value="">— none —</option>' +
+    state.themes.map(t => `<option value="${t.id}" ${t.id === f.themeId ? 'selected' : ''}>${esc(t.name)}</option>`).join('');
+
   document.getElementById('drawerDesc').value = f.description || '';
   document.getElementById('drawerOverlay').classList.add('open');
   document.getElementById('featureDrawer').classList.add('open');
@@ -987,6 +988,7 @@ function saveDrawer() {
   if (f) {
     const newName = document.getElementById('drawerTitle').value.trim();
     if (newName) f.name = newName;
+    f.themeId = document.getElementById('drawerTheme').value || null;
     f.description = document.getElementById('drawerDesc').value;
     save();
   }
