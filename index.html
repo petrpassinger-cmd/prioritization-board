@@ -328,7 +328,17 @@
     <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
   </svg>
   <h1>Prioritization Board</h1>
-  <span style="margin-left:auto">Value = 0.7 × New Business Acquisition + 0.3 × Channel Diversification &nbsp;|&nbsp; VpE = Value ÷ Effort</span>
+  <div style="margin-left:auto;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text2)">
+    Value =
+    <input id="wNbaInput" type="number" min="0" max="100" step="1" value="70"
+      style="width:46px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:3px 6px;font-size:13px;text-align:center"
+      oninput="updateWeights()" />
+    <span>% NBA +</span>
+    <input id="wCdInput" type="number" min="0" max="100" step="1" value="30"
+      style="width:46px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:3px 6px;font-size:13px;text-align:center"
+      oninput="updateWeights()" />
+    <span>% CD &nbsp;|&nbsp; <span id="weightSum" style="color:var(--accent2)">= 100%</span> &nbsp;|&nbsp; VpE = Value ÷ Effort</span>
+  </div>
 </header>
 
 <div class="container">
@@ -337,7 +347,7 @@
   <div class="legend">
     <div class="legend-item"><div class="legend-dot" style="background:var(--accent2)"></div> Value (auto-calculated)</div>
     <div class="legend-item"><div class="legend-dot" style="background:#c084fc"></div> Value per Effort (priority score)</div>
-    <div class="legend-item" style="color:var(--text2)">New Business Acquisition (70%) &nbsp;|&nbsp; Channel Diversification (30%) &nbsp;|&nbsp; Scores 0–50 &nbsp;|&nbsp; Effort: Fibonacci</div>
+    <div class="legend-item" style="color:var(--text2)">Scores 0–50 &nbsp;|&nbsp; Effort: Fibonacci (0.5 → 100)</div>
   </div>
 
   <!-- Themes bar -->
@@ -391,7 +401,7 @@
 
 <script>
 // ── State ──────────────────────────────────────────────────────────────────
-const FIBONACCI = [1, 2, 3, 5, 8, 13, 21, 34, 55, 89];
+const FIBONACCI = [0.5, 1, 2, 3, 5, 8, 13, 20, 40, 100];
 
 let state = load() || {
   themes: [
@@ -408,6 +418,8 @@ let state = load() || {
   sortKey: 'vpe',
   sortDir: -1,
   filterTheme: 'all',
+  wNba: 70,
+  wCd: 30,
 };
 
 let addingRow = false;
@@ -417,7 +429,18 @@ function save() { localStorage.setItem('pb_state', JSON.stringify(state)); }
 function load() { try { return JSON.parse(localStorage.getItem('pb_state')); } catch { return null; } }
 
 // ── Derived ────────────────────────────────────────────────────────────────
-function calcValue(f)  { return +(0.7 * f.nba + 0.3 * f.cd).toFixed(2); }
+function updateWeights() {
+  const nba = Math.max(0, Math.min(100, +document.getElementById('wNbaInput').value || 0));
+  const cd  = Math.max(0, Math.min(100, +document.getElementById('wCdInput').value  || 0));
+  state.wNba = nba; state.wCd = cd;
+  const sum = nba + cd;
+  const sumEl = document.getElementById('weightSum');
+  sumEl.textContent = '= ' + sum + '%';
+  sumEl.style.color = sum === 100 ? 'var(--accent2)' : 'var(--danger)';
+  save(); renderTable();
+}
+function weights() { return { nba: (state.wNba||70)/100, cd: (state.wCd||30)/100 }; }
+function calcValue(f)  { const w = weights(); return +(w.nba * f.nba + w.cd * f.cd).toFixed(2); }
 function calcVpE(f)    { return f.effort ? +(calcValue(f) / f.effort).toFixed(3) : 0; }
 function maxVpE()      { return Math.max(...state.features.map(calcVpE), 0.001); }
 
@@ -746,6 +769,8 @@ document.getElementById('themeOverlay').addEventListener('click', function(e) {
   if (e.target === this) closeThemeModal();
 });
 
+document.getElementById('wNbaInput').value = state.wNba ?? 70;
+document.getElementById('wCdInput').value  = state.wCd  ?? 30;
 render();
 </script>
 </body>
