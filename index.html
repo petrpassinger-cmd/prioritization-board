@@ -297,9 +297,28 @@
       padding: 6px 0;
       border-bottom: 1px solid var(--border);
     }
-    .theme-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+    .theme-dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; cursor: pointer; border: 2px solid transparent; transition: transform .1s; }
+    .theme-dot:hover { transform: scale(1.15); }
     .theme-list-item span { flex: 1; font-size: 13px; }
+    .theme-list-item input[type=text] {
+      flex: 1; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text); padding: 4px 8px; font-size: 13px;
+    }
+    .theme-list-item input[type=text]:focus { outline: 2px solid var(--accent); }
     .modal-footer { margin-top: 16px; display: flex; justify-content: flex-end; }
+
+    /* Swatch grid */
+    .swatch-grid { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 14px; }
+    .swatch {
+      width: 24px; height: 24px; border-radius: 50%; cursor: pointer;
+      border: 2px solid transparent; transition: transform .12s, border-color .12s;
+      flex-shrink: 0;
+    }
+    .swatch:hover { transform: scale(1.18); }
+    .swatch.selected { border-color: var(--text); transform: scale(1.15); }
+
+    /* Inline swatch row inside theme list item */
+    .inline-swatches { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
 
     /* ── Empty state ── */
     .empty { text-align: center; padding: 40px; color: var(--text2); font-size: 14px; }
@@ -361,7 +380,6 @@
   <!-- Table section -->
   <div class="section-header">
     <span class="section-title" id="sectionTitle">All Features</span>
-    <button class="btn primary" onclick="addFeatureRow()">+ Add Feature</button>
   </div>
 
   <div class="table-wrap">
@@ -381,6 +399,9 @@
       <tbody id="featureBody"></tbody>
     </table>
   </div>
+  <div style="margin-top:10px">
+    <button class="btn primary" onclick="addFeatureRow()">+ Add Feature</button>
+  </div>
 
 </div>
 
@@ -390,9 +411,9 @@
     <h2>Manage Themes</h2>
     <div class="modal-row">
       <input type="text" id="newThemeName" placeholder="Theme name…" />
-      <input type="color" id="newThemeColor" value="#6c63ff" />
       <button class="btn primary" onclick="addTheme()">Add</button>
     </div>
+    <div class="swatch-grid" id="newThemeSwatches"></div>
     <div id="themeList"></div>
     <div class="modal-footer">
       <button class="btn" onclick="closeThemeModal()">Close</button>
@@ -404,11 +425,18 @@
 // ── State ──────────────────────────────────────────────────────────────────
 const FIBONACCI = [0.5, 1, 2, 3, 5, 8, 13, 20, 40, 100];
 
+const SWATCHES = [
+  '#f87171','#ef4444','#f97316','#eab308','#34d399','#22c55e',
+  '#7dd3fc','#3b82f6','#a855f7','#ec4899','#9ca3af','#4b5563',
+  '#111827','#374151','#1d4ed8','#1e40af','#0e9e82','#5b52e8',
+];
+let newThemeSelectedColor = SWATCHES[5]; // default green
+
 let state = load() || {
   themes: [
-    { id: 't1', name: 'Growth',      color: '#6c63ff' },
-    { id: 't2', name: 'Infrastructure', color: '#48c9b0' },
-    { id: 't3', name: 'UX',          color: '#f59e0b' },
+    { id: 't1', name: 'Growth',         color: '#22c55e' },
+    { id: 't2', name: 'Infrastructure', color: '#3b82f6' },
+    { id: 't3', name: 'UX',             color: '#f97316' },
   ],
   features: [
     { id: 'f1', name: 'SSO / Enterprise login',   themeId: 't1', nba: 40, cd: 20, effort: 5  },
@@ -723,26 +751,66 @@ function closeThemeModal() {
   render();
 }
 
+function renderSwatchGrid(containerId, selectedColor, onPick) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = '';
+  SWATCHES.forEach(c => {
+    const s = document.createElement('div');
+    s.className = 'swatch' + (c === selectedColor ? ' selected' : '');
+    s.style.background = c;
+    s.title = c;
+    s.onclick = () => { onPick(c); renderSwatchGrid(containerId, c, onPick); };
+    el.appendChild(s);
+  });
+}
+
 function renderThemeList() {
   const el = document.getElementById('themeList');
   el.innerHTML = '';
+
+  // render new-theme swatch picker
+  renderSwatchGrid('newThemeSwatches', newThemeSelectedColor, c => { newThemeSelectedColor = c; });
+
   state.themes.forEach(t => {
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = 'border-bottom:1px solid var(--border);padding:8px 0';
+
     const row = document.createElement('div');
     row.className = 'theme-list-item';
     row.innerHTML = `
-      <div class="theme-dot" style="background:${t.color}"></div>
-      <span>${esc(t.name)}</span>
-      <button class="btn danger btn" onclick="deleteTheme('${t.id}')">Remove</button>
+      <div class="theme-dot" style="background:${t.color}" title="${t.color}"></div>
+      <input type="text" value="${esc(t.name)}" id="tname_${t.id}"
+        onchange="updateThemeName('${t.id}', this.value)" />
+      <button class="btn danger" onclick="deleteTheme('${t.id}')">Remove</button>
     `;
-    el.appendChild(row);
+    wrapper.appendChild(row);
+
+    // inline swatch row for this theme
+    const swatchRow = document.createElement('div');
+    swatchRow.className = 'inline-swatches';
+    swatchRow.id = 'tswatch_' + t.id;
+    wrapper.appendChild(swatchRow);
+    el.appendChild(wrapper);
+
+    renderSwatchGrid('tswatch_' + t.id, t.color, c => {
+      const theme = state.themes.find(x => x.id === t.id);
+      if (theme) { theme.color = c; save(); }
+      // update the dot in this row
+      row.querySelector('.theme-dot').style.background = c;
+    });
   });
+}
+
+function updateThemeName(id, name) {
+  const t = state.themes.find(x => x.id === id);
+  if (t && name.trim()) { t.name = name.trim(); save(); }
 }
 
 function addTheme() {
   const name = document.getElementById('newThemeName').value.trim();
   if (!name) return;
-  const color = document.getElementById('newThemeColor').value;
-  state.themes.push({ id: 't' + Date.now(), name, color });
+  state.themes.push({ id: 't' + Date.now(), name, color: newThemeSelectedColor });
   document.getElementById('newThemeName').value = '';
   save(); renderThemeList();
 }
