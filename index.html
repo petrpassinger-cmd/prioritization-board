@@ -318,14 +318,14 @@
     .swatch.selected { border-color: var(--text); transform: scale(1.15); }
 
     /* Swatch popover */
-    .swatch-popover {
-      display: none; position: absolute; top: calc(100% + 6px); left: 0;
+    #colorFloater {
+      display: none; position: fixed;
       background: var(--surface); border: 1px solid var(--border);
-      border-radius: 10px; padding: 10px; z-index: 300;
-      box-shadow: 0 4px 20px rgba(0,0,0,.12);
+      border-radius: 10px; padding: 10px; z-index: 9999;
+      box-shadow: 0 4px 20px rgba(0,0,0,.18);
       flex-wrap: wrap; gap: 7px; width: 208px;
     }
-    .swatch-popover.open { display: flex; }
+    #colorFloater.open { display: flex; }
 
     /* ── Empty state ── */
     .empty { text-align: center; padding: 40px; color: var(--text2); font-size: 14px; }
@@ -508,13 +508,15 @@
 </div>
 
 <!-- Theme modal -->
+<div id="colorFloater"></div>
+
+<!-- Theme modal -->
 <div class="overlay" id="themeOverlay">
   <div class="modal">
     <h2>Manage Themes</h2>
     <div class="modal-row" style="align-items:center">
-      <div class="theme-dot" id="newThemeDot" style="background:var(--accent);width:22px;height:22px;flex-shrink:0;cursor:pointer;border:2px solid var(--border)" title="Pick color" onclick="togglePopover('newThemePopover',this)"></div>
-      <div style="position:relative;flex:1">
-        <div class="swatch-popover" id="newThemePopover"></div>
+      <div class="theme-dot" id="newThemeDot" style="background:var(--accent);width:22px;height:22px;flex-shrink:0;cursor:pointer;border:2px solid var(--border)" title="Pick color" onclick="openColorFloater(this, 'new')"></div>
+      <div style="flex:1">
         <input type="text" id="newThemeName" placeholder="Theme name…" style="width:100%" />
       </div>
       <button class="btn primary" onclick="addTheme()">Add</button>
@@ -841,74 +843,75 @@ function closeThemeModal() {
   render();
 }
 
-function buildSwatchPopover(el, selectedColor, onPick) {
-  el.innerHTML = '';
+
+let _floaterOnPick = null;
+let _floaterDot = null;
+
+function openColorFloater(dotEl, key) {
+  const floater = document.getElementById('colorFloater');
+  if (_floaterDot === dotEl && floater.classList.contains('open')) {
+    closeColorFloater(); return;
+  }
+  closeColorFloater();
+  _floaterDot = dotEl;
+  const currentColor = dotEl.style.background;
+
+  floater.innerHTML = '';
   SWATCHES.forEach(c => {
     const s = document.createElement('div');
-    s.className = 'swatch' + (c === selectedColor ? ' selected' : '');
+    s.className = 'swatch' + (c === currentColor ? ' selected' : '');
     s.style.background = c;
     s.title = c;
     s.onclick = (e) => {
       e.stopPropagation();
-      onPick(c);
-      el.querySelectorAll('.swatch').forEach(x => x.classList.remove('selected'));
+      if (_floaterOnPick) _floaterOnPick(c);
+      floater.querySelectorAll('.swatch').forEach(x => x.classList.remove('selected'));
       s.classList.add('selected');
+      dotEl.style.background = c;
     };
-    el.appendChild(s);
+    floater.appendChild(s);
   });
+
+  const rect = dotEl.getBoundingClientRect();
+  floater.style.top  = (rect.bottom + 6) + 'px';
+  floater.style.left = rect.left + 'px';
+  floater.classList.add('open');
+
+  if (key === 'new') {
+    _floaterOnPick = c => { newThemeSelectedColor = c; };
+  } else {
+    _floaterOnPick = c => {
+      const theme = state.themes.find(x => x.id === key);
+      if (theme) { theme.color = c; save(); renderTable(); }
+    };
+  }
 }
 
-function togglePopover(popoverId, dotEl) {
-  const pop = document.getElementById(popoverId);
-  if (!pop) return;
-  const isOpen = pop.classList.contains('open');
-  closeAllPopovers();
-  if (!isOpen) pop.classList.add('open');
+function closeColorFloater() {
+  document.getElementById('colorFloater').classList.remove('open');
+  _floaterDot = null;
+  _floaterOnPick = null;
 }
 
-function closeAllPopovers() {
-  document.querySelectorAll('.swatch-popover.open').forEach(p => p.classList.remove('open'));
-}
+function closeAllPopovers() { closeColorFloater(); }
 
 function renderThemeList() {
   const el = document.getElementById('themeList');
   el.innerHTML = '';
 
-  // init new-theme popover
-  const newPop = document.getElementById('newThemePopover');
-  const newDot = document.getElementById('newThemeDot');
-  if (newPop) {
-    buildSwatchPopover(newPop, newThemeSelectedColor, c => {
-      newThemeSelectedColor = c;
-      if (newDot) newDot.style.background = c;
-    });
-  }
-
   state.themes.forEach(t => {
     const wrapper = document.createElement('div');
-    wrapper.style.cssText = 'border-bottom:1px solid var(--border);padding:8px 0;position:relative';
-
-    const popId = 'tswatch_' + t.id;
+    wrapper.style.cssText = 'border-bottom:1px solid var(--border);padding:8px 0';
     wrapper.innerHTML = `
       <div class="theme-list-item">
-        <div style="position:relative">
-          <div class="theme-dot" id="tdot_${t.id}" style="background:${t.color};width:22px;height:22px;cursor:pointer;border:2px solid var(--border)"
-            onclick="togglePopover('${popId}',this)" title="Pick color"></div>
-          <div class="swatch-popover" id="${popId}"></div>
-        </div>
+        <div class="theme-dot" id="tdot_${t.id}" style="background:${t.color};width:22px;height:22px;cursor:pointer;border:2px solid var(--border)"
+          onclick="openColorFloater(this,'${t.id}')" title="Pick color"></div>
         <input type="text" value="${esc(t.name)}" id="tname_${t.id}"
           onchange="updateThemeName('${t.id}', this.value)" />
         <button class="btn danger" onclick="deleteTheme('${t.id}')">Remove</button>
       </div>
     `;
     el.appendChild(wrapper);
-
-    buildSwatchPopover(document.getElementById(popId), t.color, c => {
-      const theme = state.themes.find(x => x.id === t.id);
-      if (theme) { theme.color = c; save(); }
-      const dot = document.getElementById('tdot_' + t.id);
-      if (dot) dot.style.background = c;
-    });
   });
 }
 
@@ -1010,10 +1013,10 @@ document.getElementById('themeOverlay').addEventListener('click', function(e) {
   if (e.target === this) closeThemeModal();
 });
 
-// close popovers when clicking outside
+// close color floater when clicking outside
 document.addEventListener('click', function(e) {
-  if (!e.target.closest('.swatch-popover') && !e.target.closest('.theme-dot')) {
-    closeAllPopovers();
+  if (!e.target.closest('#colorFloater') && !e.target.closest('.theme-dot')) {
+    closeColorFloater();
   }
 });
 
