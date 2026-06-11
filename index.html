@@ -420,6 +420,41 @@
 </head>
 <body>
 
+<!-- Password gate -->
+<div id="gateOverlay" style="
+  position:fixed;inset:0;z-index:99999;
+  background:#f4f5f7;
+  display:flex;align-items:center;justify-content:center;
+">
+  <div style="
+    background:#fff;border:1px solid #dde0e8;border-radius:16px;
+    padding:40px 36px;width:420px;max-width:92vw;
+    box-shadow:0 8px 40px rgba(0,0,0,.10);
+    display:flex;flex-direction:column;gap:20px;
+  ">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5b52e8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+        <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+      </svg>
+      <span style="font-weight:700;font-size:16px;color:#1a1d2e">Prioritization Board</span>
+    </div>
+    <p style="font-size:15px;color:#1a1d2e;font-weight:500;line-height:1.5">
+      Jak se jmenuje naše lednička<br>a 11× počet mikrovln?
+    </p>
+    <input id="gateInput" type="password" placeholder="Odpověď…" style="
+      border:1px solid #dde0e8;border-radius:8px;padding:10px 14px;
+      font-size:15px;font-family:inherit;color:#1a1d2e;background:#f0f1f4;
+      outline:none;width:100%;
+    " onkeydown="if(event.key==='Enter')checkGate()" />
+    <div id="gateError" style="color:#d63b50;font-size:13px;display:none">Špatná odpověď, zkus to znovu.</div>
+    <button onclick="checkGate()" style="
+      background:#5b52e8;color:#fff;border:none;border-radius:8px;
+      padding:11px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;
+    ">Vstoupit</button>
+  </div>
+</div>
+
 <header>
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
@@ -1023,6 +1058,27 @@ document.addEventListener('click', function(e) {
 document.getElementById('wNbaInput').value = state.wNba ?? 70;
 document.getElementById('wCdInput').value  = state.wCd  ?? 30;
 render();
+
+// ── Password gate ────────────────────────────────────────────────────────────
+(function() {
+  if (sessionStorage.getItem('pb_auth') === '1') {
+    document.getElementById('gateOverlay').style.display = 'none';
+  } else {
+    setTimeout(() => document.getElementById('gateInput').focus(), 50);
+  }
+})();
+
+function checkGate() {
+  const val = document.getElementById('gateInput').value;
+  if (val === 'Concept444') {
+    sessionStorage.setItem('pb_auth', '1');
+    document.getElementById('gateOverlay').style.display = 'none';
+  } else {
+    document.getElementById('gateError').style.display = 'block';
+    document.getElementById('gateInput').value = '';
+    document.getElementById('gateInput').focus();
+  }
+}
 </script>
 </body>
 </html>
