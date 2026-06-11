@@ -581,10 +581,10 @@ let state = load() || {
     { id: 't3', name: 'UX',             color: '#f97316' },
   ],
   features: [
-    { id: 'f1', name: 'SSO / Enterprise login',   themeId: 't1', nba: 40, cd: 20, effort: 5  },
-    { id: 'f2', name: 'Reseller portal',           themeId: 't1', nba: 30, cd: 50, effort: 13 },
-    { id: 'f3', name: 'API v2 public docs',        themeId: 't2', nba: 20, cd: 40, effort: 8  },
-    { id: 'f4', name: 'Onboarding wizard redesign',themeId: 't3', nba: 30, cd: 20, effort: 3  },
+    { id: 'f1', name: 'SSO / Enterprise login',   themeId: 't1', nba: 80, cd: 40, effort: 5  },
+    { id: 'f2', name: 'Reseller portal',           themeId: 't1', nba: 60, cd: 100, effort: 13 },
+    { id: 'f3', name: 'API v2 public docs',        themeId: 't2', nba: 40, cd: 80, effort: 8  },
+    { id: 'f4', name: 'Onboarding wizard redesign',themeId: 't3', nba: 60, cd: 40, effort: 3  },
   ],
   sortKey: 'vpe',
   sortDir: -1,
@@ -592,6 +592,17 @@ let state = load() || {
   wNba: 70,
   wCd: 30,
 };
+
+// one-time migration: old pip scale → new pip scale
+if (!state.migrated_v2) {
+  const map = {0:0, 10:20, 20:40, 30:60, 40:80, 50:100};
+  state.features.forEach(f => {
+    if (f.nba in map) f.nba = map[f.nba];
+    if (f.cd  in map) f.cd  = map[f.cd];
+  });
+  state.migrated_v2 = true;
+  save();
+}
 
 let addingRow = false;
 
