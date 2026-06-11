@@ -1,1 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Prioritization Board</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #222535;
+      --border: #2e3145;
+      --accent: #6c63ff;
+      --accent2: #48c9b0;
+      --text: #e8eaf0;
+      --text2: #8b90a7;
+      --danger: #e05c6e;
+      --fib-bg: #252840;
+      --value-bg: #1e2d2b;
+      --vpe-bg: #2a1e2d;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 0;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    header h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+    header span { color: var(--text2); font-size: 13px; }
+
+    /* ── Layout ── */
+    .container { padding: 28px 32px; }
+
+    /* ── Themes bar ── */
+    .themes-bar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+    .theme-chip {
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1.5px solid transparent;
+      background: var(--surface2);
+      color: var(--text2);
+      transition: all .15s;
+      user-select: none;
+    }
+    .theme-chip:hover { border-color: var(--accent); color: var(--text); }
+    .theme-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .theme-chip.all { background: var(--surface); border-color: var(--border); }
+    .theme-chip.all.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    .btn {
+      padding: 7px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      border: 1.5px solid var(--border);
+      background: var(--surface2);
+      color: var(--text2);
+      cursor: pointer;
+      transition: all .15s;
+      white-space: nowrap;
+    }
+    .btn:hover { border-color: var(--accent); color: var(--text); }
+    .btn.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .btn.primary:hover { opacity: .88; }
+    .btn.danger:hover { border-color: var(--danger); color: var(--danger); }
+
+    /* ── Section header ── */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text2);
+      text-transform: uppercase;
+      letter-spacing: .6px;
+    }
+
+    /* ── Table ── */
+    .table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    thead th {
+      background: var(--surface);
+      padding: 11px 14px;
+      text-align: left;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text2);
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
+    }
+    thead th[onclick]:hover { color: var(--text); text-decoration: underline dotted; }
+    thead th .sort-icon { margin-left: 4px; opacity: .5; }
+    thead th.sorted { color: var(--accent); }
+    thead th.sorted .sort-icon { opacity: 1; }
+
+    tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--surface2); }
+
+    td { padding: 10px 14px; vertical-align: middle; }
+
+    .td-name { font-weight: 500; min-width: 200px; }
+    .td-theme {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+      display: inline-block;
+      margin-top: 3px;
+    }
+
+    /* Score cells */
+    .driver-cell input[type=range] {
+      width: 80px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+    .driver-cell { display: flex; align-items: center; gap: 8px; }
+    .driver-val {
+      font-weight: 700;
+      font-size: 15px;
+      min-width: 16px;
+      text-align: center;
+    }
+
+    /* Effort select */
+    select.effort-select {
+      background: var(--fib-bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    select.effort-select:focus { outline: 2px solid var(--accent); }
+
+    /* Computed cells */
+    .td-value {
+      background: var(--value-bg);
+      font-weight: 700;
+      font-size: 15px;
+      color: var(--accent2);
+      text-align: center;
+    }
+    .td-vpe {
+      background: var(--vpe-bg);
+      font-weight: 700;
+      font-size: 15px;
+      color: #c084fc;
+      text-align: center;
+    }
+
+    /* VpE bar overlay */
+    .vpe-bar-wrap { display: flex; align-items: center; gap: 8px; }
+    .vpe-bar {
+      height: 6px;
+      border-radius: 3px;
+      background: #c084fc;
+      min-width: 2px;
+      transition: width .3s;
+    }
+
+    /* Delete btn */
+    .btn-del {
+      background: none;
+      border: none;
+      color: var(--text2);
+      cursor: pointer;
+      font-size: 16px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: color .15s;
+    }
+    .btn-del:hover { color: var(--danger); }
+
+    /* ── Add Feature form ── */
+    .add-row td { background: var(--surface); }
+    .add-row input[type=text] {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      padding: 5px 10px;
+      font-size: 13px;
+      width: 100%;
+    }
+    .add-row input[type=text]:focus { outline: 2px solid var(--accent); }
+    .add-row select {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      padding: 5px 8px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    /* ── Theme manager modal ── */
+    .overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.6);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+    .overlay.open { display: flex; }
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+      width: 380px;
+      max-width: 95vw;
+    }
+    .modal h2 { font-size: 16px; margin-bottom: 16px; }
+    .modal-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .modal-row input[type=text] {
+      flex: 1;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      padding: 7px 10px;
+      font-size: 13px;
+    }
+    .modal-row input[type=text]:focus { outline: 2px solid var(--accent); }
+    .modal-row input[type=color] {
+      width: 40px;
+      height: 36px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      background: none;
+      padding: 0;
+    }
+    .theme-list-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .theme-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+    .theme-list-item span { flex: 1; font-size: 13px; }
+    .modal-footer { margin-top: 16px; display: flex; justify-content: flex-end; }
+
+    /* ── Empty state ── */
+    .empty { text-align: center; padding: 40px; color: var(--text2); font-size: 14px; }
+
+    /* ── Legend ── */
+    .legend {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text2);
+    }
+    .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+  </style>
+</head>
+<body>
+
+<header>
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+    <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+  </svg>
+  <h1>Prioritization Board</h1>
+  <span style="margin-left:auto">Value = 0.7 × New Business Acquisition + 0.3 × Channel Diversification &nbsp;|&nbsp; VpE = Value ÷ Effort</span>
+</header>
+
+<div class="container">
+
+  <!-- Legend -->
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:var(--accent2)"></div> Value (auto-calculated)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#c084fc"></div> Value per Effort (priority score)</div>
+    <div class="legend-item" style="color:var(--text2)">New Business Acquisition (70%) &nbsp;|&nbsp; Channel Diversification (30%) &nbsp;|&nbsp; Scores 0–50 &nbsp;|&nbsp; Effort: Fibonacci</div>
+  </div>
+
+  <!-- Themes bar -->
+  <div class="themes-bar" id="themesBar">
+    <div class="theme-chip all active" data-theme="all" onclick="filterTheme('all')">All</div>
+    <!-- theme chips injected here -->
+    <button class="btn" onclick="openThemeModal()">+ Manage Themes</button>
+  </div>
+
+  <!-- Table section -->
+  <div class="section-header">
+    <span class="section-title" id="sectionTitle">All Features</span>
+    <button class="btn primary" onclick="addFeatureRow()">+ Add Feature</button>
+  </div>
+
+  <div class="table-wrap">
+    <table id="featureTable">
+      <thead>
+        <tr>
+          <th onclick="sortBy('name')">Feature Name <span class="sort-icon">↕</span></th>
+          <th>Theme</th>
+          <th onclick="sortBy('nba')">New Business Acquisition <span class="sort-icon">↕</span></th>
+          <th onclick="sortBy('cd')">Channel Diversification <span class="sort-icon">↕</span></th>
+          <th onclick="sortBy('effort')">Effort <span class="sort-icon">↕</span></th>
+          <th onclick="sortBy('value')" class="sorted">Value <span class="sort-icon">↓</span></th>
+          <th onclick="sortBy('vpe')">Value/Effort <span class="sort-icon">↕</span></th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="featureBody"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<!-- Theme modal -->
+<div class="overlay" id="themeOverlay">
+  <div class="modal">
+    <h2>Manage Themes</h2>
+    <div class="modal-row">
+      <input type="text" id="newThemeName" placeholder="Theme name…" />
+      <input type="color" id="newThemeColor" value="#6c63ff" />
+      <button class="btn primary" onclick="addTheme()">Add</button>
+    </div>
+    <div id="themeList"></div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeThemeModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+const FIBONACCI = [1, 2, 3, 5, 8, 13, 21, 34, 55, 89];
+
+let state = load() || {
+  themes: [
+    { id: 't1', name: 'Growth',      color: '#6c63ff' },
+    { id: 't2', name: 'Infrastructure', color: '#48c9b0' },
+    { id: 't3', name: 'UX',          color: '#f59e0b' },
+  ],
+  features: [
+    { id: 'f1', name: 'SSO / Enterprise login',   themeId: 't1', nba: 40, cd: 20, effort: 5  },
+    { id: 'f2', name: 'Reseller portal',           themeId: 't1', nba: 30, cd: 50, effort: 13 },
+    { id: 'f3', name: 'API v2 public docs',        themeId: 't2', nba: 20, cd: 40, effort: 8  },
+    { id: 'f4', name: 'Onboarding wizard redesign',themeId: 't3', nba: 30, cd: 20, effort: 3  },
+  ],
+  sortKey: 'vpe',
+  sortDir: -1,
+  filterTheme: 'all',
+};
+
+let addingRow = false;
+
+// ── Persistence ────────────────────────────────────────────────────────────
+function save() { localStorage.setItem('pb_state', JSON.stringify(state)); }
+function load() { try { return JSON.parse(localStorage.getItem('pb_state')); } catch { return null; } }
+
+// ── Derived ────────────────────────────────────────────────────────────────
+function calcValue(f)  { return +(0.7 * f.nba + 0.3 * f.cd).toFixed(2); }
+function calcVpE(f)    { return f.effort ? +(calcValue(f) / f.effort).toFixed(3) : 0; }
+function maxVpE()      { return Math.max(...state.features.map(calcVpE), 0.001); }
+
+// ── Sorting ────────────────────────────────────────────────────────────────
+let sortKey = state.sortKey || 'vpe';
+let sortDir = state.sortDir || -1;
+
+function sortBy(key) {
+  if (sortKey === key) sortDir *= -1; else { sortKey = key; sortDir = -1; }
+  state.sortKey = sortKey; state.sortDir = sortDir;
+  save(); render();
+}
+
+function sorted(features) {
+  return [...features].sort((a, b) => {
+    let av, bv;
+    if (sortKey === 'name')   { av = a.name.toLowerCase(); bv = b.name.toLowerCase(); }
+    else if (sortKey === 'nba')    { av = a.nba;  bv = b.nba; }
+    else if (sortKey === 'cd')     { av = a.cd;   bv = b.cd; }
+    else if (sortKey === 'effort') { av = a.effort; bv = b.effort; }
+    else if (sortKey === 'value')  { av = calcValue(a); bv = calcValue(b); }
+    else                           { av = calcVpE(a);  bv = calcVpE(b); }
+    if (av < bv) return sortDir;
+    if (av > bv) return -sortDir;
+    return 0;
+  });
+}
+
+// ── Filter ─────────────────────────────────────────────────────────────────
+let activeTheme = state.filterTheme || 'all';
+
+function filterTheme(id) {
+  activeTheme = id;
+  state.filterTheme = id;
+  save(); render();
+}
+
+function visibleFeatures() {
+  return activeTheme === 'all'
+    ? state.features
+    : state.features.filter(f => f.themeId === activeTheme);
+}
+
+// ── Themes bar ─────────────────────────────────────────────────────────────
+function renderThemesBar() {
+  const bar = document.getElementById('themesBar');
+  // keep "All" chip and "+ Manage" button; replace middle chips
+  const chips = bar.querySelectorAll('.theme-chip:not(.all)');
+  chips.forEach(c => c.remove());
+  const manageBtn = bar.querySelector('button');
+
+  state.themes.forEach(t => {
+    const chip = document.createElement('div');
+    chip.className = 'theme-chip' + (activeTheme === t.id ? ' active' : '');
+    chip.dataset.theme = t.id;
+    chip.textContent = t.name;
+    chip.style.borderColor = t.color;
+    if (activeTheme === t.id) chip.style.background = t.color;
+    chip.onclick = () => filterTheme(t.id);
+    bar.insertBefore(chip, manageBtn);
+  });
+
+  const allChip = bar.querySelector('.theme-chip.all');
+  allChip.className = 'theme-chip all' + (activeTheme === 'all' ? ' active' : '');
+}
+
+// ── Table ──────────────────────────────────────────────────────────────────
+function themeById(id) { return state.themes.find(t => t.id === id); }
+
+function renderTable() {
+  const tbody = document.getElementById('featureBody');
+  tbody.innerHTML = '';
+  const features = sorted(visibleFeatures());
+
+  // update sort indicators
+  document.querySelectorAll('thead th').forEach(th => {
+    th.classList.remove('sorted');
+    const icon = th.querySelector('.sort-icon');
+    if (icon) icon.textContent = '↕';
+  });
+  const colMap = { name:0, nba:2, cd:3, effort:4, value:5, vpe:6 };
+  const ths = document.querySelectorAll('thead th');
+  if (colMap[sortKey] !== undefined) {
+    ths[colMap[sortKey]].classList.add('sorted');
+    const icon = ths[colMap[sortKey]].querySelector('.sort-icon');
+    if (icon) icon.textContent = sortDir === -1 ? '↓' : '↑';
+  }
+
+  const mx = maxVpE();
+
+  if (features.length === 0 && !addingRow) {
+    tbody.innerHTML = '<tr><td colspan="8"><div class="empty">No features yet — click "+ Add Feature" to start.</div></td></tr>';
+  }
+
+  features.forEach(f => {
+    const theme = themeById(f.themeId);
+    const val = calcValue(f);
+    const vpe = calcVpE(f);
+    const barW = Math.round((vpe / mx) * 80);
+
+    const tr = document.createElement('tr');
+    tr.dataset.id = f.id;
+    tr.innerHTML = `
+      <td class="td-name">
+        <div contenteditable="true" class="feat-name-edit" data-id="${f.id}">${esc(f.name)}</div>
+        ${theme ? `<div class="td-theme" style="background:${theme.color}22;color:${theme.color}">${esc(theme.name)}</div>` : ''}
+      </td>
+      <td>
+        <select class="effort-select" onchange="changeTheme('${f.id}', this.value)">
+          ${state.themes.map(t => `<option value="${t.id}" ${t.id===f.themeId?'selected':''}>${esc(t.name)}</option>`).join('')}
+          <option value="" ${!f.themeId?'selected':''}>— none —</option>
+        </select>
+      </td>
+      <td>
+        <div class="driver-cell">
+          <input type="range" min="0" max="50" step="10" value="${f.nba}"
+            oninput="updateScore('${f.id}','nba',+this.value); this.nextElementSibling.textContent=this.value" />
+          <span class="driver-val">${f.nba}</span>
+        </div>
+      </td>
+      <td>
+        <div class="driver-cell">
+          <input type="range" min="0" max="50" step="10" value="${f.cd}"
+            oninput="updateScore('${f.id}','cd',+this.value); this.nextElementSibling.textContent=this.value" />
+          <span class="driver-val">${f.cd}</span>
+        </div>
+      </td>
+      <td>
+        <select class="effort-select" onchange="updateScore('${f.id}','effort',+this.value)">
+          ${FIBONACCI.map(n => `<option value="${n}" ${n===f.effort?'selected':''}>${n}</option>`).join('')}
+        </select>
+      </td>
+      <td class="td-value">${val.toFixed(2)}</td>
+      <td class="td-vpe">
+        <div class="vpe-bar-wrap">
+          <div class="vpe-bar" style="width:${barW}px"></div>
+          <span>${vpe.toFixed(3)}</span>
+        </div>
+      </td>
+      <td><button class="btn-del" title="Delete" onclick="deleteFeature('${f.id}')">✕</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // inline name editing
+  tbody.querySelectorAll('.feat-name-edit').forEach(el => {
+    el.addEventListener('blur', () => {
+      const id = el.dataset.id;
+      const f = state.features.find(x => x.id === id);
+      if (f) { f.name = el.textContent.trim() || f.name; save(); }
+    });
+    el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); el.blur(); } });
+  });
+
+  // add row
+  if (addingRow) {
+    const tr = document.createElement('tr');
+    tr.className = 'add-row';
+    tr.innerHTML = `
+      <td><input type="text" id="newName" placeholder="Feature name…" autofocus /></td>
+      <td>
+        <select id="newTheme">
+          ${state.themes.map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join('')}
+          <option value="">— none —</option>
+        </select>
+      </td>
+      <td><div class="driver-cell"><input type="range" id="newNba" min="0" max="50" step="10" value="30"
+        oninput="this.nextElementSibling.textContent=this.value"/><span class="driver-val">30</span></div></td>
+      <td><div class="driver-cell"><input type="range" id="newCd" min="0" max="50" step="10" value="30"
+        oninput="this.nextElementSibling.textContent=this.value"/><span class="driver-val">30</span></div></td>
+      <td>
+        <select id="newEffort" class="effort-select">
+          ${FIBONACCI.map(n => `<option value="${n}" ${n===5?'selected':''}>${n}</option>`).join('')}
+        </select>
+      </td>
+      <td class="td-value" colspan="1" id="newValuePreview">—</td>
+      <td class="td-vpe" id="newVpePreview">—</td>
+      <td>
+        <button class="btn primary" style="padding:5px 10px" onclick="saveNewFeature()">Save</button>
+        <button class="btn" style="padding:5px 10px;margin-top:4px" onclick="cancelAdd()">✕</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+
+    // live preview in add row
+    const preview = () => {
+      const nba = +document.getElementById('newNba').value;
+      const cd  = +document.getElementById('newCd').value;
+      const eff = +document.getElementById('newEffort').value;
+      const val = +(0.7*nba + 0.3*cd).toFixed(2);
+      const vpe = eff ? +(val/eff).toFixed(3) : 0;
+      document.getElementById('newValuePreview').textContent = val.toFixed(2);
+      document.getElementById('newVpePreview').textContent   = vpe.toFixed(3);
+    };
+    ['newNba','newCd','newEffort'].forEach(id => {
+      document.getElementById(id).addEventListener('input', preview);
+      document.getElementById(id).addEventListener('change', preview);
+    });
+    preview();
+
+    document.getElementById('newName').addEventListener('keydown', e => {
+      if (e.key === 'Enter') saveNewFeature();
+      if (e.key === 'Escape') cancelAdd();
+    });
+  }
+
+  // section title
+  const t = themeById(activeTheme);
+  document.getElementById('sectionTitle').textContent = t ? t.name + ' Features' : 'All Features';
+}
+
+// ── Mutations ──────────────────────────────────────────────────────────────
+function updateScore(id, key, val) {
+  const f = state.features.find(x => x.id === id);
+  if (f) { f[key] = val; save(); renderTable(); }
+}
+
+function changeTheme(id, themeId) {
+  const f = state.features.find(x => x.id === id);
+  if (f) { f.themeId = themeId || null; save(); renderTable(); }
+}
+
+function deleteFeature(id) {
+  state.features = state.features.filter(x => x.id !== id);
+  save(); render();
+}
+
+function addFeatureRow() {
+  addingRow = true;
+  renderTable();
+  const el = document.getElementById('newName');
+  if (el) el.focus();
+}
+
+function cancelAdd() { addingRow = false; renderTable(); }
+
+function saveNewFeature() {
+  const name = document.getElementById('newName').value.trim();
+  if (!name) { document.getElementById('newName').focus(); return; }
+  const f = {
+    id: 'f' + Date.now(),
+    name,
+    themeId: document.getElementById('newTheme').value || null,
+    nba:    +document.getElementById('newNba').value,
+    cd:     +document.getElementById('newCd').value,
+    effort: +document.getElementById('newEffort').value,
+  };
+  state.features.push(f);
+  addingRow = false;
+  save(); render();
+}
+
+// ── Theme modal ────────────────────────────────────────────────────────────
+function openThemeModal() {
+  renderThemeList();
+  document.getElementById('themeOverlay').classList.add('open');
+}
+function closeThemeModal() {
+  document.getElementById('themeOverlay').classList.remove('open');
+  render();
+}
+
+function renderThemeList() {
+  const el = document.getElementById('themeList');
+  el.innerHTML = '';
+  state.themes.forEach(t => {
+    const row = document.createElement('div');
+    row.className = 'theme-list-item';
+    row.innerHTML = `
+      <div class="theme-dot" style="background:${t.color}"></div>
+      <span>${esc(t.name)}</span>
+      <button class="btn danger btn" onclick="deleteTheme('${t.id}')">Remove</button>
+    `;
+    el.appendChild(row);
+  });
+}
+
+function addTheme() {
+  const name = document.getElementById('newThemeName').value.trim();
+  if (!name) return;
+  const color = document.getElementById('newThemeColor').value;
+  state.themes.push({ id: 't' + Date.now(), name, color });
+  document.getElementById('newThemeName').value = '';
+  save(); renderThemeList();
+}
+
+function deleteTheme(id) {
+  state.themes = state.themes.filter(t => t.id !== id);
+  state.features.forEach(f => { if (f.themeId === id) f.themeId = null; });
+  if (activeTheme === id) activeTheme = 'all';
+  save(); renderThemeList();
+}
+
+// ── Full render ────────────────────────────────────────────────────────────
+function render() {
+  renderThemesBar();
+  renderTable();
+}
+
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// close modal on overlay click
+document.getElementById('themeOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeThemeModal();
+});
+
+render();
+</script>
+</body>
+</html>
