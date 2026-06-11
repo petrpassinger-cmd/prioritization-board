@@ -8,18 +8,18 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg: #0f1117;
-      --surface: #1a1d27;
-      --surface2: #222535;
-      --border: #2e3145;
-      --accent: #6c63ff;
-      --accent2: #48c9b0;
-      --text: #e8eaf0;
-      --text2: #8b90a7;
-      --danger: #e05c6e;
-      --fib-bg: #252840;
-      --value-bg: #1e2d2b;
-      --vpe-bg: #2a1e2d;
+      --bg: #f4f5f7;
+      --surface: #ffffff;
+      --surface2: #f0f1f4;
+      --border: #dde0e8;
+      --accent: #5b52e8;
+      --accent2: #0e9e82;
+      --text: #1a1d2e;
+      --text2: #6b7280;
+      --danger: #d63b50;
+      --fib-bg: #eef0f8;
+      --value-bg: #e8f7f4;
+      --vpe-bg: #f3eeff;
     }
 
     body {
@@ -163,7 +163,7 @@
       flex-shrink: 0;
     }
     .pip:hover { border-color: var(--accent); transform: scale(1.15); }
-    .pip.filled { background: var(--accent); border-color: var(--accent); }
+    .pip.filled { background: var(--accent); border-color: var(--accent); box-shadow: 0 1px 3px rgba(91,82,232,.25); }
     .pip-val {
       font-weight: 700;
       font-size: 12px;
@@ -197,9 +197,10 @@
       background: var(--vpe-bg);
       font-weight: 700;
       font-size: 15px;
-      color: #c084fc;
+      color: #7c3aed;
       text-align: center;
     }
+    .vpe-bar { background: #7c3aed; }
 
     /* VpE bar overlay */
     .vpe-bar-wrap { display: flex; align-items: center; gap: 8px; }
@@ -332,12 +333,12 @@
     Value =
     <input id="wNbaInput" type="number" min="0" max="100" step="1" value="70"
       style="width:46px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:3px 6px;font-size:13px;text-align:center"
-      oninput="updateWeights()" />
+      oninput="updateWeights('nba')" />
     <span>% NBA +</span>
     <input id="wCdInput" type="number" min="0" max="100" step="1" value="30"
       style="width:46px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:3px 6px;font-size:13px;text-align:center"
-      oninput="updateWeights()" />
-    <span>% CD &nbsp;|&nbsp; <span id="weightSum" style="color:var(--accent2)">= 100%</span> &nbsp;|&nbsp; VpE = Value ÷ Effort</span>
+      oninput="updateWeights('cd')" />
+    <span>% CD &nbsp;|&nbsp; VpE = Value ÷ Effort</span>
   </div>
 </header>
 
@@ -429,14 +430,13 @@ function save() { localStorage.setItem('pb_state', JSON.stringify(state)); }
 function load() { try { return JSON.parse(localStorage.getItem('pb_state')); } catch { return null; } }
 
 // ── Derived ────────────────────────────────────────────────────────────────
-function updateWeights() {
-  const nba = Math.max(0, Math.min(100, +document.getElementById('wNbaInput').value || 0));
-  const cd  = Math.max(0, Math.min(100, +document.getElementById('wCdInput').value  || 0));
-  state.wNba = nba; state.wCd = cd;
-  const sum = nba + cd;
-  const sumEl = document.getElementById('weightSum');
-  sumEl.textContent = '= ' + sum + '%';
-  sumEl.style.color = sum === 100 ? 'var(--accent2)' : 'var(--danger)';
+function updateWeights(changed) {
+  const nbaEl = document.getElementById('wNbaInput');
+  const cdEl  = document.getElementById('wCdInput');
+  let val = Math.max(0, Math.min(100, +( changed === 'nba' ? nbaEl : cdEl).value || 0));
+  if (changed === 'nba') { nbaEl.value = val; cdEl.value  = 100 - val; }
+  else                   { cdEl.value  = val; nbaEl.value = 100 - val; }
+  state.wNba = +nbaEl.value; state.wCd = +cdEl.value;
   save(); renderTable();
 }
 function weights() { return { nba: (state.wNba||70)/100, cd: (state.wCd||30)/100 }; }
