@@ -353,8 +353,12 @@
     .drawer-header-text { flex: 1; min-width: 0; }
     .drawer-title {
       font-size: 16px; font-weight: 700; margin-bottom: 4px;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      width: 100%; border: none; background: transparent; color: var(--text);
+      padding: 2px 4px; margin-left: -4px; border-radius: 4px;
+      outline: none; font-family: inherit;
     }
+    .drawer-title:hover { background: var(--bg); }
+    .drawer-title:focus { background: var(--bg); outline: 2px solid var(--accent); }
     .drawer-meta { font-size: 12px; color: var(--text2); display: flex; gap: 10px; flex-wrap: wrap; }
     .drawer-meta span { display: flex; align-items: center; gap: 4px; }
     .drawer-close {
@@ -484,7 +488,7 @@
 <div class="drawer" id="featureDrawer">
   <div class="drawer-header">
     <div class="drawer-header-text">
-      <div class="drawer-title" id="drawerTitle"></div>
+      <input class="drawer-title" id="drawerTitle" type="text" placeholder="Feature name">
       <div class="drawer-meta" id="drawerMeta"></div>
     </div>
     <button class="drawer-close" onclick="closeDrawer()">✕</button>
@@ -942,7 +946,7 @@ function openDrawer(id) {
   const val = calcValue(f);
   const vpe = calcVpE(f);
 
-  document.getElementById('drawerTitle').textContent = f.name;
+  document.getElementById('drawerTitle').value = f.name;
   document.getElementById('drawerMeta').innerHTML =
     (theme ? `<span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${theme.color};margin-right:3px"></span>${esc(theme.name)}</span>` : '') +
     `<span>Effort: ${f.effort}</span>`;
@@ -980,7 +984,12 @@ function closeDrawer() {
 
 function saveDrawer() {
   const f = state.features.find(x => x.id === drawerFeatureId);
-  if (f) { f.description = document.getElementById('drawerDesc').value; save(); }
+  if (f) {
+    const newName = document.getElementById('drawerTitle').value.trim();
+    if (newName) f.name = newName;
+    f.description = document.getElementById('drawerDesc').value;
+    save();
+  }
   closeDrawer();
 }
 
