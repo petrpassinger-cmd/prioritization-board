@@ -138,7 +138,8 @@
     tbody tr:last-child { border-bottom: none; }
     tbody tr:hover { background: var(--surface2); }
 
-    td { padding: 10px 14px; vertical-align: middle; }
+    td { padding: 8px 10px; vertical-align: middle; }
+    thead th { padding: 9px 10px; }
 
     .td-name { font-weight: 500; min-width: 200px; }
     .td-theme {
@@ -150,18 +151,25 @@
       margin-top: 3px;
     }
 
-    /* Score cells */
-    .driver-cell input[type=range] {
-      width: 80px;
-      accent-color: var(--accent);
+    /* Score pips */
+    .pip-row { display: flex; gap: 4px; align-items: center; }
+    .pip {
+      width: 14px; height: 14px;
+      border-radius: 3px;
+      border: 1.5px solid var(--border);
+      background: var(--surface2);
       cursor: pointer;
+      transition: background .1s, border-color .1s, transform .1s;
+      flex-shrink: 0;
     }
-    .driver-cell { display: flex; align-items: center; gap: 8px; }
-    .driver-val {
+    .pip:hover { border-color: var(--accent); transform: scale(1.15); }
+    .pip.filled { background: var(--accent); border-color: var(--accent); }
+    .pip-val {
       font-weight: 700;
-      font-size: 15px;
-      min-width: 16px;
-      text-align: center;
+      font-size: 12px;
+      color: var(--text2);
+      min-width: 22px;
+      text-align: right;
     }
 
     /* Effort select */
@@ -476,6 +484,41 @@ function renderThemesBar() {
   allChip.className = 'theme-chip all' + (activeTheme === 'all' ? ' active' : '');
 }
 
+// ── Pip helpers ────────────────────────────────────────────────────────────
+// Values are 0–50 in steps of 10; 5 pips represent 10,20,30,40,50
+const PIP_STEPS = [10, 20, 30, 40, 50];
+
+function pipRow(featureId, field, currentVal) {
+  const pips = PIP_STEPS.map((v, i) => {
+    const filled = currentVal >= v ? 'filled' : '';
+    return `<div class="pip ${filled}" onclick="updateScore('${featureId}','${field}',${v}); rerenderPips(this.parentElement,${v})"></div>`;
+  }).join('');
+  return `<div class="pip-row" data-fid="${featureId}" data-field="${field}">${pips}<span class="pip-val">${currentVal}</span></div>`;
+}
+
+function pipRowNew(fieldId, defaultVal) {
+  const pips = PIP_STEPS.map((v, i) => {
+    const filled = defaultVal >= v ? 'filled' : '';
+    return `<div class="pip ${filled}" onclick="setNewPip('${fieldId}',${v},this.parentElement)"></div>`;
+  }).join('');
+  return `<div class="pip-row" id="${fieldId}">${pips}<span class="pip-val">${defaultVal}</span></div>`;
+}
+
+function rerenderPips(container, val) {
+  container.querySelectorAll('.pip').forEach((pip, i) => {
+    pip.classList.toggle('filled', val >= PIP_STEPS[i]);
+  });
+  container.querySelector('.pip-val').textContent = val;
+}
+
+let newPipValues = { newNba: 30, newCd: 30 };
+
+function setNewPip(fieldId, val, container) {
+  newPipValues[fieldId] = val;
+  rerenderPips(container, val);
+  if (window._addRowPreview) window._addRowPreview();
+}
+
 // ── Table ──────────────────────────────────────────────────────────────────
 function themeById(id) { return state.themes.find(t => t.id === id); }
 
@@ -523,20 +566,8 @@ function renderTable() {
           <option value="" ${!f.themeId?'selected':''}>— none —</option>
         </select>
       </td>
-      <td>
-        <div class="driver-cell">
-          <input type="range" min="0" max="50" step="10" value="${f.nba}"
-            oninput="updateScore('${f.id}','nba',+this.value); this.nextElementSibling.textContent=this.value" />
-          <span class="driver-val">${f.nba}</span>
-        </div>
-      </td>
-      <td>
-        <div class="driver-cell">
-          <input type="range" min="0" max="50" step="10" value="${f.cd}"
-            oninput="updateScore('${f.id}','cd',+this.value); this.nextElementSibling.textContent=this.value" />
-          <span class="driver-val">${f.cd}</span>
-        </div>
-      </td>
+      <td>${pipRow(f.id, 'nba', f.nba)}</td>
+      <td>${pipRow(f.id, 'cd', f.cd)}</td>
       <td>
         <select class="effort-select" onchange="updateScore('${f.id}','effort',+this.value)">
           ${FIBONACCI.map(n => `<option value="${n}" ${n===f.effort?'selected':''}>${n}</option>`).join('')}
@@ -576,10 +607,8 @@ function renderTable() {
           <option value="">— none —</option>
         </select>
       </td>
-      <td><div class="driver-cell"><input type="range" id="newNba" min="0" max="50" step="10" value="30"
-        oninput="this.nextElementSibling.textContent=this.value"/><span class="driver-val">30</span></div></td>
-      <td><div class="driver-cell"><input type="range" id="newCd" min="0" max="50" step="10" value="30"
-        oninput="this.nextElementSibling.textContent=this.value"/><span class="driver-val">30</span></div></td>
+      <td>${pipRowNew('newNba', 30)}</td>
+      <td>${pipRowNew('newCd', 30)}</td>
       <td>
         <select id="newEffort" class="effort-select">
           ${FIBONACCI.map(n => `<option value="${n}" ${n===5?'selected':''}>${n}</option>`).join('')}
@@ -596,18 +625,16 @@ function renderTable() {
 
     // live preview in add row
     const preview = () => {
-      const nba = +document.getElementById('newNba').value;
-      const cd  = +document.getElementById('newCd').value;
+      const nba = newPipValues.newNba ?? 30;
+      const cd  = newPipValues.newCd  ?? 30;
       const eff = +document.getElementById('newEffort').value;
       const val = +(0.7*nba + 0.3*cd).toFixed(2);
       const vpe = eff ? +(val/eff).toFixed(3) : 0;
       document.getElementById('newValuePreview').textContent = val.toFixed(2);
       document.getElementById('newVpePreview').textContent   = vpe.toFixed(3);
     };
-    ['newNba','newCd','newEffort'].forEach(id => {
-      document.getElementById(id).addEventListener('input', preview);
-      document.getElementById(id).addEventListener('change', preview);
-    });
+    window._addRowPreview = preview;
+    document.getElementById('newEffort').addEventListener('change', preview);
     preview();
 
     document.getElementById('newName').addEventListener('keydown', e => {
@@ -639,6 +666,7 @@ function deleteFeature(id) {
 
 function addFeatureRow() {
   addingRow = true;
+  newPipValues = { newNba: 30, newCd: 30 };
   renderTable();
   const el = document.getElementById('newName');
   if (el) el.focus();
@@ -653,8 +681,8 @@ function saveNewFeature() {
     id: 'f' + Date.now(),
     name,
     themeId: document.getElementById('newTheme').value || null,
-    nba:    +document.getElementById('newNba').value,
-    cd:     +document.getElementById('newCd').value,
+    nba:    newPipValues.newNba ?? 30,
+    cd:     newPipValues.newCd  ?? 30,
     effort: +document.getElementById('newEffort').value,
   };
   state.features.push(f);
