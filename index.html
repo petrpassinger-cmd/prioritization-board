@@ -471,6 +471,8 @@
       style="width:46px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:3px 6px;font-size:13px;text-align:center"
       oninput="updateWeights('cd')" />
     <span>% CD &nbsp;|&nbsp; VpE = Value ÷ Effort</span>
+    <span id="syncStatus" style="margin-left:12px;font-size:12px;color:var(--text2)" title="Cloud sync">☁</span>
+    <button onclick="pushToCloud()" style="font-size:12px;padding:3px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text2);cursor:pointer" title="Push local data to cloud">↑ Push</button>
   </div>
 </header>
 
@@ -607,8 +609,62 @@ if (!state.migrated_v2) {
 let addingRow = false;
 
 // ── Persistence ────────────────────────────────────────────────────────────
-function save() { localStorage.setItem('pb_state', JSON.stringify(state)); }
+const SB_URL = 'https://tphipxfvwclnmlpkdjhe.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRwaGlweGZ2d2Nsbm1scGtkamhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3ODAzMTgsImV4cCI6MjA5NzM1NjMxOH0.L072ZJ_Yr9Iyhpb1VmL60bRTS60RX2cPjmpGOn78fpI';
+const SB_HEADERS = { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates' };
+
+let syncTimer = null;
+function setSyncStatus(icon, title) {
+  const el = document.getElementById('syncStatus');
+  if (el) { el.textContent = icon; el.title = title; }
+}
+
+function save() {
+  localStorage.setItem('pb_state', JSON.stringify(state));
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(syncToCloud, 2000);
+}
+
 function load() { try { return JSON.parse(localStorage.getItem('pb_state')); } catch { return null; } }
+
+async function syncToCloud() {
+  setSyncStatus('⏳', 'Ukládám do cloudu…');
+  try {
+    const res = await fetch(SB_URL + '/rest/v1/board_state', {
+      method: 'POST',
+      headers: SB_HEADERS,
+      body: JSON.stringify({ id: 'main', data: state, updated_at: new Date().toISOString() })
+    });
+    if (!res.ok) throw new Error(await res.text());
+    setSyncStatus('☁ ✓', 'Uloženo v cloudu: ' + new Date().toLocaleTimeString());
+  } catch (e) {
+    setSyncStatus('☁ ✗', 'Chyba sync: ' + e.message);
+  }
+}
+
+async function pushToCloud() {
+  await syncToCloud();
+}
+
+async function loadFromCloud() {
+  setSyncStatus('⏳', 'Načítám z cloudu…');
+  try {
+    const res = await fetch(SB_URL + '/rest/v1/board_state?id=eq.main&select=data', { headers: SB_HEADERS });
+    if (!res.ok) throw new Error(await res.text());
+    const rows = await res.json();
+    if (rows.length && rows[0].data) {
+      state = rows[0].data;
+      localStorage.setItem('pb_state', JSON.stringify(state));
+      setSyncStatus('☁ ✓', 'Načteno z cloudu: ' + new Date().toLocaleTimeString());
+      return true;
+    }
+    setSyncStatus('☁', 'Cloud je prázdný');
+    return false;
+  } catch (e) {
+    setSyncStatus('☁ ✗', 'Chyba načítání: ' + e.message);
+    return false;
+  }
+}
 
 // ── Derived ────────────────────────────────────────────────────────────────
 function updateWeights(changed) {
@@ -1093,6 +1149,16 @@ document.addEventListener('click', function(e) {
 document.getElementById('wNbaInput').value = state.wNba ?? 70;
 document.getElementById('wCdInput').value  = state.wCd  ?? 30;
 render();
+
+// load from cloud on startup
+(async () => {
+  const loaded = await loadFromCloud();
+  if (loaded) {
+    document.getElementById('wNbaInput').value = state.wNba ?? 70;
+    document.getElementById('wCdInput').value  = state.wCd  ?? 30;
+    render();
+  }
+})();
 
 // ── Password gate ────────────────────────────────────────────────────────────
 (function() {
