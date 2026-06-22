@@ -470,7 +470,7 @@
     <input id="wCdInput" type="number" min="0" max="100" step="1" value="30"
       style="width:46px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:3px 6px;font-size:13px;text-align:center"
       oninput="updateWeights('cd')" />
-    <span>% CD &nbsp;|&nbsp; VpE = Value ÷ Effort</span>
+    <span>% Retention &nbsp;|&nbsp; VpE = Value ÷ Effort</span>
     <span id="syncStatus" style="display:none"></span>
   </div>
 </header>
@@ -505,7 +505,7 @@
         <tr>
           <th onclick="sortBy('name')">Feature Name <span class="sort-icon">↕</span></th>
           <th onclick="sortBy('nba')">New Business Acquisition <span class="sort-icon">↕</span></th>
-          <th onclick="sortBy('cd')">Channel Diversification <span class="sort-icon">↕</span></th>
+          <th onclick="sortBy('cd')">Retention <span class="sort-icon">↕</span></th>
           <th onclick="sortBy('effort')">Effort <span class="sort-icon">↕</span></th>
           <th onclick="sortBy('value')" class="sorted">Value <span class="sort-icon">↓</span></th>
           <th onclick="sortBy('vpe')">Value/Effort <span class="sort-icon">↕</span></th>
@@ -1082,7 +1082,7 @@ function openDrawer(id) {
       <div class="score-card-val" style="color:var(--accent)">${f.nba}</div>
     </div>
     <div class="score-card">
-      <div class="score-card-label">CD</div>
+      <div class="score-card-label">Retention</div>
       <div class="score-card-val" style="color:var(--accent)">${f.cd}</div>
     </div>
     <div class="score-card">
