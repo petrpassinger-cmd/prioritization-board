@@ -636,6 +636,7 @@ async function syncToCloud() {
     });
     if (!res.ok) throw new Error(await res.text());
     setSyncStatus('☁ ✓', 'Uloženo v cloudu: ' + new Date().toLocaleTimeString());
+    createBackup();
   } catch (e) {
     setSyncStatus('☁ ✗', 'Chyba sync: ' + e.message);
   }
@@ -643,6 +644,47 @@ async function syncToCloud() {
 
 async function pushToCloud() {
   await syncToCloud();
+}
+
+// ── Backups (keep last 10) ──────────────────────────────────────────────────
+let lastBackupTime = 0;
+async function createBackup() {
+  // max one backup per 10 minutes
+  if (Date.now() - lastBackupTime < 10 * 60 * 1000) return;
+  lastBackupTime = Date.now();
+  try {
+    // insert backup
+    await fetch(SB_URL + '/rest/v1/board_backups', {
+      method: 'POST',
+      headers: { ...SB_HEADERS, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ data: state })
+    });
+    // prune — keep only 10 newest
+    const listRes = await fetch(SB_URL + '/rest/v1/board_backups?select=id&order=created_at.desc', { headers: SB_HEADERS });
+    if (listRes.ok) {
+      const rows = await listRes.json();
+      const toDelete = rows.slice(10).map(r => r.id);
+      if (toDelete.length) {
+        await fetch(SB_URL + '/rest/v1/board_backups?id=in.(' + toDelete.join(',') + ')', {
+          method: 'DELETE', headers: SB_HEADERS
+        });
+      }
+    }
+  } catch (_) {}
+}
+
+// ── Keepalive (ping every 4 days to prevent Supabase pausing) ──────────────
+function scheduleKeepalive() {
+  const INTERVAL = 4 * 24 * 60 * 60 * 1000; // 4 days
+  const lastPing = +localStorage.getItem('pb_keepalive') || 0;
+  const delay = Math.max(0, INTERVAL - (Date.now() - lastPing));
+  setTimeout(async function ping() {
+    try {
+      await fetch(SB_URL + '/rest/v1/board_state?id=eq.main&select=id', { headers: SB_HEADERS });
+      localStorage.setItem('pb_keepalive', Date.now());
+    } catch (_) {}
+    setTimeout(ping, INTERVAL);
+  }, delay);
 }
 
 async function loadFromCloud() {
@@ -1149,8 +1191,9 @@ document.getElementById('wNbaInput').value = state.wNba ?? 70;
 document.getElementById('wCdInput').value  = state.wCd  ?? 30;
 render();
 
-// load from cloud on startup
+// load from cloud on startup + start keepalive
 (async () => {
+  scheduleKeepalive();
   const loaded = await loadFromCloud();
   if (loaded) {
     document.getElementById('wNbaInput').value = state.wNba ?? 70;
